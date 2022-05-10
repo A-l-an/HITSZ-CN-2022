@@ -4,6 +4,8 @@
 #include "arp.h"
 #include "icmp.h"
 
+int ip_id = 0;                  // IP协议标识符
+
 /**
  * @brief 处理一个收到的数据包
  * 
@@ -73,7 +75,31 @@ void ip_in(buf_t *buf, uint8_t *src_mac)
  */
 void ip_fragment_out(buf_t *buf, uint8_t *ip, net_protocol_t protocol, int id, uint16_t offset, int mf)
 {
-    // TO-DO
+    // Step1: 增加IP数据报头部缓存空间。
+    buf_add_header(buf, 20);
+
+    // Step2: 填写IP数据报头部字段。
+    ip_hdr_t *ip_hdr = (ip_hdr_t *)buf->data;
+
+    ip_hdr->version = IP_VERSION_4;
+    ip_hdr->hdr_len = 5;
+    ip_hdr->tos = 0;
+    ip_hdr->total_len16 = swap16(buf->len);              // 记得大小端转换
+    ip_hdr->id16 = swap16(id);
+    ip_hdr->flags_fragment16 = swap16(mf<<13 | offset);  // 位2表禁止分片;位3标识更多分片,除了数据报的最后一个分片外都要标记为1
+    ip_hdr->ttl = 64;
+    ip_hdr->protocol = protocol;
+
+    // Step3: 填写首部校验和
+    ip_hdr->hdr_checksum16 = 0;                             // 先填0
+
+    uint16_t temp = checksum16((uint16_t *)ip_hdr, 20);     // 再计算校验和
+    ip_hdr->hdr_checksum16 = temp;
+
+    // Step4: 调用arp_out函数()将封装后的IP头部和数据发送出去。
+    memcpy(ip_hdr->src_ip, net_if_ip, NET_IP_LEN);
+    memcpy(ip_hdr->dst_ip, ip, NET_IP_LEN);
+    arp_out(buf, ip);
 }
 
 /**
@@ -85,7 +111,39 @@ void ip_fragment_out(buf_t *buf, uint8_t *ip, net_protocol_t protocol, int id, u
  */
 void ip_out(buf_t *buf, uint8_t *ip, net_protocol_t protocol)
 {
-    // TO-DO
+    size_t MTU = 1500;
+    uint16_t offset = 0;
+    buf_t ip_buf;
+    // 从上层传递下来的数据报包长大于IP协议最大负载包长, 分片发送。
+    if (buf->len > MTU - 20)
+    {
+        // 若截断后最后的一个分片<=IP协议最大负载包长，跳出循环。
+        while (buf->len > MTU - 20)
+        {
+            buf_init(&ip_buf, MTU - 20);                // 每个截断后的包长 = IP协议最大负载包长
+            memcpy(ip_buf.data, buf->data, MTU - 20);
+            ip_fragment_out(&ip_buf, ip, protocol, ip_id, offset, 1);
+            buf_remove_header(buf, MTU - 20);           // 删除已发送内容
+            offset = offset + (MTU - 20);               // 更新字段
+            buf->len = buf->len - (MTU - 20);
+        }
+        // 若最后的一个分片是存在的（未发送）
+        if (buf->len > 0)
+        {
+            buf_init(&ip_buf, buf->len);
+            memcpy(ip_buf.data, buf->data, buf->len);
+            ip_fragment_out(&ip_buf, ip, protocol, ip_id, offset, 0);   // 最后一个分片MF=0
+        }
+    }
+    // 数据报包没有超过IP协议最大负载包长，则直接发送。
+    else
+    {
+        buf_init(&ip_buf, buf->len);
+        memcpy(ip_buf.data, buf->data, buf->len);
+        ip_fragment_out(&ip_buf, ip, protocol, ip_id, offset, 0);
+    }
+    
+    ip_id++;
 }
 
 /**
