@@ -76,9 +76,10 @@ uint16_t checksum16(uint16_t *data, size_t len)
 {
     uint16_t checksum = 0;
     uint32_t check_number = 0;
+    uint16_t *checksum_buf = data;
     for (int i = len; i > 1; i -= sizeof(uint16_t)){
-        check_number += (uint32_t)(*data);              // 对两个二进制数做加法
-        data++;
+        check_number += (uint32_t)(*checksum_buf);              // 对两个二进制数做加法
+        checksum_buf++;
     }
     check_number =  (check_number >> 16) + (check_number & 0xffff);     // 若有进位，则加到下一列。
     check_number += (check_number >> 16);               // 若最高位相加仍产生进位，则要在最后的结果中加1。
