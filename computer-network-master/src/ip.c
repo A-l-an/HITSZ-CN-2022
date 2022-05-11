@@ -40,8 +40,8 @@ void ip_in(buf_t *buf, uint8_t *src_mac)
         return;
 
     // Step5: 去除填充字段
-    if (buf->len > ip_hdr->total_len16)                           // 如果接收到的数据包的长度大于IP头部的总长度字段
-        buf_remove_padding(buf, buf->len - swap16(ip_hdr->total_len16));  // 说明该数据包有填充字段，应去除。
+    if (buf->len > ip_hdr->hdr_len)                           // 如果接收到的数据包的长度大于IP头部的总长度字段
+        buf_remove_padding(buf, buf->len - ip_hdr->hdr_len);  // 说明该数据包有填充字段，应去除。
 
     // Step6: 去掉IP报头。
     buf_remove_header(buf, 20);
