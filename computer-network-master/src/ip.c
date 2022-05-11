@@ -18,12 +18,6 @@ void ip_in(buf_t *buf, uint8_t *src_mac)
     if (buf->len < 20)
         return ;
     // Step2: 报头检测
-    // ip_hdr_t ip_hdr;
-    // ip_hdr.version = (buf->data[0] & 0xf0) >> 4;
-    // ip_hdr.total_len16 = (buf->data[2] << 8) + buf->data[3];
-    // if( (ip_hdr.version != IP_VERSION_4) 
-    //  && (ip_hdr.total_len16 <= buf->len )) return;
-
     ip_hdr_t *ip_hdr = (ip_hdr_t *)buf->data;
     if( (ip_hdr->version != IP_VERSION_4) 
      || (ip_hdr->total_len16 > buf->len )              // 总长度字段>收到的包的长度
