@@ -17,11 +17,12 @@ void ip_in(buf_t *buf, uint8_t *src_mac)
     // Step1: 如果数据长度小于IP头部长度，丢弃不处理。
     if (buf->len < 20)
         return ;
+
     // Step2: 报头检测
     ip_hdr_t *ip_hdr = (ip_hdr_t *)buf->data;
-    if( (ip_hdr->version != IP_VERSION_4) 
-     || (ip_hdr->total_len16 > buf->len )              // 总长度字段>收到的包的长度
-     ) return;     
+    if( (ip_hdr->version != 4)
+     || (swap16(ip_hdr->total_len16) > buf->len )              // 总长度字段>收到的包的长度 
+       )   return;    
 
     // Step3: 头部校验
     uint16_t temp_checksum = ip_hdr->hdr_checksum16;    // 先把头部校验和字段缓存起来
@@ -40,15 +41,18 @@ void ip_in(buf_t *buf, uint8_t *src_mac)
         return;
 
     // Step5: 去除填充字段
-    if (buf->len > ip_hdr->hdr_len)                           // 如果接收到的数据包的长度大于IP头部的总长度字段
-        buf_remove_padding(buf, buf->len - ip_hdr->hdr_len);  // 说明该数据包有填充字段，应去除。
-
-    // Step6: 去掉IP报头。
-    buf_remove_header(buf, 20);
+    if (buf->len > swap16(ip_hdr->total_len16))      // 如果接收到的数据包的长度大于IP头部的总长度字段
+        buf_remove_padding(buf, buf->len - swap16(ip_hdr->total_len16));  // 说明该数据包有填充字段，应去除。
 
     // Step7: 向上层传递数据包。                                              
-    if (net_in(buf, ip_hdr->protocol, ip_hdr->src_ip) < 0)       // 协议类型不可识别，返回ICMP协议不可达信息。
+    uint8_t port =ip_hdr->protocol;
+
+    if(ip_hdr->protocol!=NET_PROTOCOL_UDP&&ip_hdr->protocol!=NET_PROTOCOL_ICMP) // 协议类型不可识别，返回ICMP协议不可达信息。
         icmp_unreachable(buf, ip_hdr->src_ip, ICMP_CODE_PROTOCOL_UNREACH);
+    else{
+        buf_remove_header(buf, 20);                     // Step6：只有协议可达时，才应该去掉IP报头。
+        net_in(buf,port,ip_hdr->src_ip);
+    }
 }
 
 /**
@@ -78,13 +82,10 @@ void ip_fragment_out(buf_t *buf, uint8_t *ip, net_protocol_t protocol, int id, u
     ip_hdr->ttl = 64;
     ip_hdr->protocol = protocol;
 
-
     // Step3: 填写首部校验和
     ip_hdr->hdr_checksum16 = 0;                             // 先填0
-
     memcpy(ip_hdr->src_ip, net_if_ip, NET_IP_LEN);          // 拷贝要在计算校验和之前完成，否则校验和会计算失误。
     memcpy(ip_hdr->dst_ip, ip, NET_IP_LEN);
-
     uint16_t temp = checksum16((uint16_t *)ip_hdr, 20);     // 再计算校验和
     ip_hdr->hdr_checksum16 = temp;
     
