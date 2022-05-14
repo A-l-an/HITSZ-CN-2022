@@ -46,7 +46,6 @@ void ip_in(buf_t *buf, uint8_t *src_mac)
 
     // Step7: 向上层传递数据包。                                              
     uint8_t port =ip_hdr->protocol;
-
     if(ip_hdr->protocol!=NET_PROTOCOL_UDP&&ip_hdr->protocol!=NET_PROTOCOL_ICMP) // 协议类型不可识别，返回ICMP协议不可达信息。
         icmp_unreachable(buf, ip_hdr->src_ip, ICMP_CODE_PROTOCOL_UNREACH);
     else{
@@ -82,10 +81,14 @@ void ip_fragment_out(buf_t *buf, uint8_t *ip, net_protocol_t protocol, int id, u
     ip_hdr->ttl = 64;
     ip_hdr->protocol = protocol;
 
+
     // Step3: 填写首部校验和
+
     ip_hdr->hdr_checksum16 = 0;                             // 先填0
+
     memcpy(ip_hdr->src_ip, net_if_ip, NET_IP_LEN);          // 拷贝要在计算校验和之前完成，否则校验和会计算失误。
     memcpy(ip_hdr->dst_ip, ip, NET_IP_LEN);
+
     uint16_t temp = checksum16((uint16_t *)ip_hdr, 20);     // 再计算校验和
     ip_hdr->hdr_checksum16 = temp;
     

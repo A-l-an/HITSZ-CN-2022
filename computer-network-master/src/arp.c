@@ -114,6 +114,9 @@ void arp_in(buf_t *buf, uint8_t *src_mac)
         return ;
     // 做报头检查，查看报文是否完整。
     arp_pkt_t *arp_pkt = (arp_pkt_t *)buf->data;
+    //
+    memcpy(arp_pkt->sender_mac, src_mac, NET_MAC_LEN);
+    //
 	uint16_t opcode = swap16(arp_pkt->opcode16);
 	// 不完整
 	if (arp_pkt->hw_type16 != swap16(ARP_HW_ETHER)
@@ -123,16 +126,16 @@ void arp_in(buf_t *buf, uint8_t *src_mac)
 		|| (opcode != ARP_REQUEST && opcode != ARP_REPLY)
 	)   return;
     // 完整，更新ARP表项。
-    map_set(&arp_table,arp_pkt->sender_ip, src_mac);
+    map_set(&arp_table, arp_pkt->sender_ip, src_mac);
     // 查看该接收报文的IP地址是否有对应的arp_buf缓存
-    buf_t *buf_t = map_get(&arp_buf, arp_pkt->sender_ip);
-    if (buf_t != NULL){     // 有arp_buf
-            ethernet_out(buf_t, arp_pkt->sender_mac, NET_PROTOCOL_IP);  // 将数据包直接发送给以太网层(sender_ip的包对应的MAC地址就是sender_mac)
+    buf_t *buf_data = map_get(&arp_buf, arp_pkt->sender_ip);
+    if (buf_data != NULL){     // 有arp_buf
+            ethernet_out(buf_data, arp_pkt->sender_mac, NET_PROTOCOL_IP);  // 将数据包直接发送给以太网层(sender_ip的包对应的MAC地址就是sender_mac)
             map_delete(&arp_buf, arp_pkt->sender_ip);                   // 将这个缓存的数据包删除掉
             return ;
     }
     else{                   // 没有arp_buf
-        if ((opcode == ARP_REQUEST) && (!memcmp(net_if_ip, arp_pkt->target_ip, NET_IP_LEN))){   // 是本主机MAC地址的ARP请求报文
+        if ((opcode == ARP_REQUEST) && (memcmp(net_if_ip, arp_pkt->target_ip, NET_IP_LEN) == 0)){   // 是本主机MAC地址的ARP请求报文
             // uint8_t this_ip[NET_IP_LEN] = NET_IF_IP;
             // uint8_t this_mac[NET_MAC_LEN] = NET_IF_MAC;
             // uint8_t target_ip_t[NET_IP_LEN];

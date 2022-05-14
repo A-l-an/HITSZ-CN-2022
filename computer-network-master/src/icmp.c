@@ -23,6 +23,7 @@ static void icmp_resp(buf_t *req_buf, uint8_t *src_ip)
     icmp_resp_hdr->id16 = icmp_in_hdr->id16;
     icmp_resp_hdr->seq16 = icmp_in_hdr->seq16;
     icmp_resp_hdr->checksum16 = 0;
+
     icmp_resp_hdr->checksum16 = checksum16((uint16_t *)icmp_resp_hdr, txbuf.len);
 
     // Step3 ：将数据报发送出去。
@@ -77,7 +78,7 @@ void icmp_unreachable(buf_t *recv_buf, uint8_t *src_ip, icmp_code_t code)
     icmp_un_hdr->seq16 = 0;
     icmp_un_hdr->checksum16 = 0;
 
-    // Step3 ：将数据报发送出去。
+    // Step3 ：调用ip_out()函数将数据报发送出去。
     memcpy(txbuf.data + sizeof(icmp_hdr_t), recv_buf->data, sizeof(ip_hdr_t) + 8);
     icmp_un_hdr->checksum16 = checksum16((uint16_t *)icmp_un_hdr, txbuf.len);
     ip_out(&txbuf, src_ip, NET_PROTOCOL_ICMP);
