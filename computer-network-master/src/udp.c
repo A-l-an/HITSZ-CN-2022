@@ -28,7 +28,7 @@ static uint16_t udp_checksum(buf_t *buf, uint8_t *src_ip, uint8_t *dst_ip)
 {
     buf_add_header(buf, sizeof(ip_hdr_t));         // IP层向上层传递数据包之前去掉了ip报头, 这里要增加UDP伪头部(即IP)。
     
-    // int flag = 0;                                  // 奇偶标记位，默认为偶。 
+    int flag = 0;                                  // 奇偶标记位，默认为偶。 
     ip_hdr_t ip_hdr;
     memcpy(&ip_hdr, buf->data, 20);                // 暂存IP头部的数据
     buf_remove_header(buf, 8);                     // UDP伪头部只需要后12字节
@@ -42,7 +42,7 @@ static uint16_t udp_checksum(buf_t *buf, uint8_t *src_ip, uint8_t *dst_ip)
 
     if(buf->len %2){                                //长度为奇数则补零
         buf_add_padding(buf,1);
-        // flag = 1;
+        flag = 1;
     }
     
     uint16_t checksum = checksum16((uint16_t *)buf->data, buf->len);
@@ -51,10 +51,10 @@ static uint16_t udp_checksum(buf_t *buf, uint8_t *src_ip, uint8_t *dst_ip)
     memcpy(buf->data, &ip_hdr, sizeof(ip_hdr_t));
     buf_remove_header(buf, sizeof(ip_hdr_t));
 
-    // if (flag == 1){
-    //     buf_remove_padding(buf, 1);                // 计算后要除去填充字段
-    //     flag = 0;
-    // }
+    if (flag == 1){
+        buf_remove_padding(buf, 1);                // 计算后要除去填充字段
+        flag = 0;
+    }
     
     return checksum;
 }
@@ -124,7 +124,7 @@ void udp_out(buf_t *buf, uint16_t src_port, uint8_t *dst_ip, uint16_t dst_port)
     memcpy(buf->data, &udp_out_hdr, sizeof(udp_hdr_t));
 
     uint16_t checksum16 = udp_checksum(buf, net_if_ip, dst_ip);
-    udp_out_hdr.checksum16 = swap16(checksum16);
+    udp_out_hdr.checksum16 = checksum16;
     memcpy(buf->data, &udp_out_hdr, sizeof(udp_hdr_t));      // 包括校验和，再复制一次。
 
     ip_out(buf, dst_ip, NET_PROTOCOL_UDP);
