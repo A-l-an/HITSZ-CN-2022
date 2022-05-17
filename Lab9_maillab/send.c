@@ -45,8 +45,14 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     strcpy(dest_ip, inet_ntoa(*addr_list[i-1]));
 
     // TODO: Create a socket, return the file descriptor to s_fd, and establish a TCP connection to the mail server
+    struct sockaddr_in* servaddr;
+    servaddr->sin_family = AF_INET;
+    servaddr->sin_port = swap16(port);
+    bzero(servaddr->sin_zero, 8);
+    servaddr->sin_addr.s_addr = inet_addr(dest_ip);
+
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-    connect(clientSocket, mailserver)
+    connect(clientSocket, servaddr, len(servaddr));
 
     // Print welcome message
     if ((r_size = recv(s_fd, buf, MAX_SIZE, 0)) == -1)
@@ -58,7 +64,7 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     printf("%s", buf);
 
     // Send EHLO command and print server response
-    const char* EHLO = "EHLO Alan\r\n";              // TODO: Enter EHLO command here
+    const char* EHLO = "EHLO Alan\r\n";               // TODO: Enter EHLO command here
     send(s_fd, EHLO, strlen(EHLO), 0);
 
     // TODO: Print server response to EHLO command
