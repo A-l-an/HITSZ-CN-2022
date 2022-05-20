@@ -51,8 +51,8 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     bzero(servaddr->sin_zero, 8);
     servaddr->sin_addr.s_addr = inet_addr(dest_ip);
 
-    int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-    connect(clientSocket, servaddr, len(servaddr));
+    s_fd = socket(AF_INET, SOCK_STREAM, 0);
+    connect(s_fd, servaddr, strlen(servaddr));
 
     // Print welcome message
     if ((r_size = recv(s_fd, buf, MAX_SIZE, 0)) == -1)
@@ -68,62 +68,62 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     send(s_fd, EHLO, strlen(EHLO), 0);
 
     // TODO: Print server response to EHLO command
-    clientSocket.send(heloCommand.encode())
-    recv1 = clientSocket.recv(1024).decode()
-    print(recv1)
+    int recv1 = recv(s_fd, EHLO, strlen(EHLO), 0);
+    if (recv1 == -1)
+        printf('Not received from server.');
+    else
+        printf("%d", recv1);
 
     // TODO: Authentication. Server response should be printed out.
-    if recv1[:3] != '250':
-    print('250 reply not received from server.')
+    const char* login = 'AUTH LOGIN\r\n';
+    send(s_fd, login, strlen(login), 0);
+    int recv2 = recv(s_fd, login, strlen(login), 0);
+    printf("login: %d", recv2);
+
+    send(s_fd, user, strlen(user), 0);
+    int recv3 = recv(s_fd, user, strlen(user), 0);
+    printf("user: %d", recv3);
+    send(s_fd, pass, strlen(pass), 0);
+    int recv4 = recv(s_fd, pass, strlen(pass), 0);
+    printf("password: %d", recv4);
 
     // TODO: Send MAIL FROM command and print server response
-    login = 'AUTH LOGIN\r\n'
-    clientSocket.send(login.encode())
-    recv2 = clientSocket.recv(1024).decode()
-    print('login: ', recv2)
-
-    clientSocket.send(user)
-    recv2 = clientSocket.recv(1024).decode()
-    print('user: ', recv2)
-    clientSocket.send(password)
-    recv3 = clientSocket.recv(1024).decode()
-    print('password: ', recv3)
-
-    mailFrom = 'MAIL FROM: <50627****@qq.com>\r\n'
-    clientSocket.send(mailFrom.encode())
-    recv4 = clientSocket.recv(1024).decode()
-    print('mail from: ', recv4)
+    // from = 'MAIL FROM: <**@qq.com>\r\n';
+    send(s_fd, from, strlen(from), 0);
+    int recv5 = recv(s_fd, from, strlen(from), 0);
+    printf("mail from: %d", recv5);
 
     // TODO: Send RCPT TO command and print server response
-    reptTo = 'RCPT TO: <kairos****@163.com>\r\n'
-    clientSocket.send(reptTo.encode())
-    recv5 = clientSocket.recv(1024).decode()
-    print('rcpt to: ', recv5)
+    // reptTo = 'RCPT TO: <**@163.com>\r\n'
+    send(s_fd, receiver, strlen(receiver), 0);
+    int recv6 = recv(s_fd, receiver, strlen(receiver), 0);
+    printf("rcpt to: %d", recv6);
 
     // TODO: Send DATA command and print server response
-    data = 'DATA\r\n'
-    clientSocket.send(data.encode())
-    recv6 = clientSocket.recv(1024).decode()
-    print('data: ', recv6)
+    const char* data = 'DATA\r\n';
+    send(s_fd, data, strlen(data), 0);
+    int recv7 = recv(s_fd, data, strlen(data), 0);
+    printf("data: %d", recv7);
 
     // TODO: Send message data
-    msg_content = 'From: ' + from + '\r\n'
-    msg_content += 'To: ' + receiver + '\r\n'
-    msg_content += 'Subject: ' + subject + '\r\n'
-    msg_content += 'Content: ' + msg + '\r\n'
-    msg_content += 'Attach: ' + att_path + '\r\n'
-    clientSocket.send(msg_content.encode())
+    strcat(msg, 'From: ');     strcat(msg, from);      strcat(msg, '\r\n');
+    strcat(msg, 'To: ');       strcat(msg, receiver);  strcat(msg, '\r\n');
+    strcat(msg, 'Subject: ');  strcat(msg, subject);   strcat(msg, '\r\n');
+    strcat(msg, 'Content: ');  strcat(msg, 'msg');     strcat(msg, '\r\n');
+    strcat(msg, 'Attach: ');   strcat(msg, att_path);  strcat(msg, '\r\n');
+
+    send(s_fd, msg, strlen(msg), 0);
 
     // TODO: Message ends with a single period
-    clientSocket.send(endmsg.encode())
-    recv9 = clientSocket.recv(1024).decode()
-    print('mail: ', recv9)
+    send(s_fd, end_msg, strlen(end_msg), 0);
+    int recv8 = recv(s_fd, end_msg, strlen(end_msg), 0);
+    printf("mail: %d", recv8);
 
     // TODO: Send QUIT command and print server response
-    quitCommand = 'QUIT\r\n';
-    clientSocket.send(quitCommand.encode());
-    recv10 = clientSocket.recv(1024).decode();
-    // print('quit: ', recv10);
+    const char* QCommand = 'QUIT\r\n';
+    send(s_fd, QCommand, strlen(QCommand), 0);
+    int recv9 = recv(s_fd, QCommand, strlen(QCommand), 0);
+    // printf("quit: %d", recv9);
 
     close(s_fd);
 
