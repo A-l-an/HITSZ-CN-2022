@@ -13,7 +13,7 @@ char buf[MAX_SIZE+1];
 
 void recv_mail()
 {
-    const char* host_name = "pop.qq.com";             // TODO: Specify the mail server domain name
+    const char* host_name = "pop.163.com";             // TODO: Specify the mail server domain name
     const unsigned short port = 110;        // POP3 server port
     const char* user = "";                  // TODO: Specify the user
     const char* pass = "";                  // TODO: Specify the password
