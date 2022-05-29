@@ -13,6 +13,33 @@
 
 char buf[MAX_SIZE+1];
 
+char* get_file_content(const char* file_name) {
+    // Source of base64 encoding function
+    FILE* src = fopen(file_name, "rb");
+    // Destination of base64 encoding function
+    FILE* dst = fopen("tmp", "wb+");
+    if (src == NULL || dst == NULL) {
+        perror("fopen");
+        exit(EXIT_FAILURE);
+    }
+
+    encode_file(src, dst);
+    fclose(src);
+
+    // Get the size of the file
+    fseek(dst, 0, SEEK_END);
+    int file_size = ftell(dst);
+    char* file_content = (char*) malloc((file_size + 1) * sizeof(char));
+    rewind(dst);
+    
+    // Read the file content
+    fread(file_content, 1, file_size, dst);
+    file_content[file_size] = '\0';
+
+    fclose(dst);
+    return file_content;
+}
+
 // receiver: mail address of the recipient
 // subject:  mail subject
 // msg:      content of mail body or path to the file containing mail body
@@ -22,9 +49,9 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     const char* end_msg = "\r\n.\r\n";
     const char* host_name = "smtp.qq.com";                 // TODO: Specify the mail server domain name
     const unsigned short port = 25;             // SMTP server port
-    const char* user = "alan";                  // TODO: Specify the user
-    const char* pass = "";        // TODO: Specify the password
-    const char* from = "alan@hitsz-lab.com";    // TODO: Specify the mail address of the sender
+    const char* user = "1952679188@qq.com";                  // TODO: Specify the user
+    const char* pass = "2012shijiemori";        // TODO: Specify the password
+    const char* from = "1952679188@qq.com";    // TODO: Specify the mail address of the sender
     char dest_ip[16];                           // Mail server IP address
     int s_fd;                                   // socket file descriptor
     struct hostent *host;
@@ -51,8 +78,16 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     bzero(servaddr->sin_zero, 8);
     servaddr->sin_addr.s_addr = inet_addr(dest_ip);
 
-    s_fd = socket(AF_INET, SOCK_STREAM, 0);
-    connect(s_fd, servaddr, strlen(servaddr));
+    if ((s_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+    if (connect(s_fd, (struct sockaddr *)servaddr, sizeof(struct sockaddr)) == -1)
+    {
+        perror("connect");
+        exit(EXIT_FAILURE);
+    }
 
     // Print welcome message
     if ((r_size = recv(s_fd, buf, MAX_SIZE, 0)) == -1)
@@ -61,16 +96,20 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
         exit(EXIT_FAILURE);
     }
     buf[r_size] = '\0'; // Do not forget the null terminator
-    printf("%s", buf);
+
+    // printf("%s", buf);
+    for (int i = 0; i < r_size; i++)
+        printf("%c", buf[i]);
+    printf("\n");
 
     // Send EHLO command and print server response
-    const char* EHLO = "EHLO Alan\r\n";               // TODO: Enter EHLO command here
+    const char* EHLO = "EHLO smtp.qq.com\r\n";               // TODO: Enter EHLO command here
     send(s_fd, EHLO, strlen(EHLO), 0);
 
     // TODO: Print server response to EHLO command
     int recv1 = recv(s_fd, buf, MAX_SIZE, 0);
     if (recv1 == -1)
-        printf('Not received from server.');
+        printf('recv1');
     else
         printf("%d", recv1);
 
@@ -78,28 +117,44 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     const char* login = 'AUTH LOGIN\r\n';
     send(s_fd, login, strlen(login), 0);
     int recv2 = recv(s_fd, buf, MAX_SIZE, 0);
-    printf("login: %d", recv2);
+    if (recv2 == -1)
+        printf('recv2');
+    else
+        printf("login: %d", recv2);
 
-    const char* username = encode_str(user);
-    send(s_fd, username, strlen(username), 0);
-    int recv3 = recv(s_fd, username, strlen(username), 0);
-    printf("user: %d", recv3);
-    free(user);
-    const char* password = encode_str(pass);
-    send(s_fd, password, strlen(password), 0);
+    const char* from_encode = encode_str(from);
+    send(s_fd, from_encode, strlen(from_encode), 0);
+    int recv3 = recv(s_fd, from_encode, strlen(from_encode), 0);
+    if (recv3 == -1)
+        printf('recv3');
+    else
+        printf("user: %d", recv3);
+    // free(user);
+
+    const char* pass_encode = encode_str(pass);
+    send(s_fd, pass_encode, strlen(pass_encode), 0);
     int recv4 = recv(s_fd, buf, MAX_SIZE, 0);
-    printf("password: %d", recv4);
+    if (recv4 == -1)
+        printf('recv4');
+    else
+        printf("password: %d", recv4);
     free(pass);
 
     // TODO: Send MAIL FROM command and print server response
     send(s_fd, from, strlen(from), 0);
     int recv5 = recv(s_fd, buf, MAX_SIZE, 0);
-    printf("mail from: %d", recv5);
+    if (recv5 == -1)
+        printf('recv5');
+    else
+        printf("mail from: %d", recv5);
 
     // TODO: Send RCPT TO command and print server response
     send(s_fd, receiver, strlen(receiver), 0);
     int recv6 = recv(s_fd, buf, MAX_SIZE, 0);
-    printf("rcpt to: %d", recv6);
+    if (recv6 == -1)
+        printf('recv6');
+    else
+        printf("rcpt to: %d", recv6);
 
     // TODO: Send DATA command and print server response
     const char* data = 'DATA\r\n';
@@ -108,6 +163,31 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     printf("data: %d", recv7);
 
     // TODO: Send message data
+    char* fname;
+    char* msg_encoded = NULL;
+    char* att_encoded = NULL;
+    if (msg != NULL)
+        msg_encoded = get_file_content(msg);
+    if (att_path != NULL)
+    {
+        char* fname_adr = strrchr(att_path, '/');
+
+        if (fname_adr == NULL){
+            fname_adr = strrchr(att_path, '\\');
+            fname = (char*)malloc(sizeof(char) * strlen(att_path));
+            strcpy(fname, att_path);
+        }
+        else {
+            int fname_len = -1;
+            while (fname_adr[fname_len] != '\0')
+                ++fname_len;
+            fname = (char*) malloc(sizeof(char) * (fname_len + 1));
+            strcpy(fname, fname_adr + 1);
+        }
+
+        att_encoded = get_file_content(att_path);
+    }
+
     strcat(msg, 'From: ');     strcat(msg, from);      strcat(msg, '\r\n');
     strcat(msg, 'To: ');       strcat(msg, receiver);  strcat(msg, '\r\n');
     strcat(msg, 'Subject: ');  strcat(msg, subject);   strcat(msg, '\r\n');
@@ -127,6 +207,8 @@ void send_mail(const char* receiver, const char* subject, const char* msg, const
     int recv9 = recv(s_fd, buf, MAX_SIZE, 0);
     printf("quit: %d", recv9);
 
+    free(msg_encoded);
+    free(att_encoded);
     close(s_fd);
 }
 

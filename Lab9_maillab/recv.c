@@ -15,8 +15,8 @@ void recv_mail()
 {
     const char* host_name = "pop.163.com";             // TODO: Specify the mail server domain name
     const unsigned short port = 110;        // POP3 server port
-    const char* user = "";                  // TODO: Specify the user
-    const char* pass = "";                  // TODO: Specify the password
+    const char* user = "1952679188@qq.com";                  // TODO: Specify the user
+    const char* pass = "2012shijiemori";                  // TODO: Specify the password
     char dest_ip[16];
     int s_fd;                               // socket file descriptor
     struct hostent *host;
@@ -80,7 +80,8 @@ void recv_mail()
     // TODO: Retrieve the first mail and print its content
     // 获取编号为msg的邮件正文。服务器返回的内容里第一行是邮件大小（以字节为单位），之后是邮件内容，最后一行是“.”，表示结束。
     int recv5 = recv(s_fd, buf, MAX_SIZE, 0);
-    printf("%s", buf);
+    // printf("%s", buf);
+    printf("rec: %d", recv5);
 
     // TODO: Send QUIT command and print server response
     const char* QCommand = 'QUIT\r\n';
